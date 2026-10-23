@@ -1,0 +1,60 @@
+name: TMP Windows node_modules restore benchmark
+
+on:
+  push:
+    branches:
+      - lramos15/tmp-windows-restore-bench
+
+permissions:
+  contents: read
+
+jobs:
+  large:
+    name: Large runner ${{ matrix.attempt }}
+    runs-on: vscode-large-runners-windows-8-core
+    strategy:
+      fail-fast: false
+      matrix:
+        attempt: [1, 2]
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version-file: .nvmrc
+      - name: Compute node_modules cache key
+        shell: pwsh
+        run: |
+          mkdir .build -ea 0
+          node build/azure-pipelines/common/computeNodeModulesCacheKey.ts win32 x64 $(node -p process.arch) > .build/packagelockhash
+      - name: Download node_modules cache
+        uses: actions/cache/restore@caa296126883cff596d87d8935842f9db880ef25 # v5.1.0
+        with:
+          path: .build/node_modules_cache
+          key: "node_modules-windows-${{ hashFiles('.build/packagelockhash') }}"
+          fail-on-cache-miss: true
+      - name: Benchmark
+        shell: pwsh
+        run: ./.github/workflows/tmp-windows-restore-bench.ps1
+
+  onees:
+    name: 1ES
+    runs-on: [ self-hosted, 1ES.Pool=1es-vscode-oss-windows-2022-x64, "JobId=tmp-restore-bench-${{ github.run_id }}-${{ github.run_number }}-${{ github.run_attempt }}" ]
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version-file: .nvmrc
+      - name: Compute node_modules cache key
+        shell: pwsh
+        run: |
+          mkdir .build -ea 0
+          node build/azure-pipelines/common/computeNodeModulesCacheKey.ts win32 x64 $(node -p process.arch) > .build/packagelockhash
+      - name: Download node_modules cache
+        uses: actions/cache/restore@caa296126883cff596d87d8935842f9db880ef25 # v5.1.0
+        with:
+          path: .build/node_modules_cache
+          key: "node_modules-windows-${{ hashFiles('.build/packagelockhash') }}"
+          fail-on-cache-miss: true
+      - name: Benchmark
+        shell: pwsh
+        run: ./.github/workflows/tmp-windows-restore-bench.ps1
